@@ -27,7 +27,6 @@ import (
 	"go/token"
 )
 
-
 // Nil is the nil literal
 func Nil() NodeMarshaler {
 	return Ident("nil")
@@ -129,3 +128,40 @@ func Assign(op string, kvpairs ...NodeMarshaler) NodeMarshaler {
 	})
 
 }
+
+// File creates a new ast.File with the provided contents
+func File(pkgName string, contents ...NodeMarshaler) NodeMarshaler {
+	return nodef(func(s *Scope) ast.Node {
+		f := &ast.File{Name: ast.NewIdent(pkgName)}
+		s.Stash[fileKey] = f
+		for _, content := range contents {
+			n := content.MarshalNode(s)
+			switch n := n.(type) {
+			case nil:
+			case ast.Decl:
+				f.Decls = append(f.Decls, n)
+			case *ast.ImportSpec:
+				f.Imports = append(f.Imports, n)
+			default:
+				panic("unexpected file content type")
+			}
+		}
+		return f
+	})
+}
+
+// Func creates a func decl.
+func Func(name string) NodeMarshaler {
+	return nodef(func(s *Scope) ast.Node {
+		return &ast.FuncDecl{
+			Name: ast.NewIdent(name),
+			Recv: &ast.FieldList{},
+			Type: &ast.FuncType{
+				Params:  &ast.FieldList{},
+				Results: &ast.FieldList{},
+			},
+		}
+	})
+}
+
+var fileKey = &struct{}{}

@@ -25,9 +25,21 @@ type NodeMarshaler interface {
 	// Op represents a binary operation such as "<"
 	Op(op string, o NodeMarshaler) NodeMarshaler
 
-	// Assign repreesents an assignment op such as ":="
+	// Assign represents an assignment op such as ":="
 	// Use code.Assign for multiple simultaneous assignment
 	Assign(op string, o NodeMarshaler) NodeMarshaler
+
+	// WithReceiver adds a receiver to the fn
+	WithReceiver(args ...NodeMarshaler) NodeMarshaler
+
+	// WithParam adds a param to the fn
+	WithParam(args ...NodeMarshaler) NodeMarshaler
+
+	// WithResult adds a result to the fn
+	WithResult(args ...NodeMarshaler) NodeMarshaler
+
+	// WithBody adds a body to the fn
+	WithBody(stmt ...NodeMarshaler) NodeMarshaler
 }
 
 type nodef func(s *Scope) ast.Node
@@ -94,4 +106,69 @@ func (n nodef) Then(stmts ...NodeMarshaler) NodeMarshaler {
 		ifstmt.Body = block
 		return ifstmt
 	})
+}
+
+func (n nodef) WithReceiver(args ...NodeMarshaler) NodeMarshaler {
+	return nodef(func(s *Scope) ast.Node {
+		fn := n.MarshalNode(s).(*ast.FuncDecl)
+		fn.Recv.List = append(fn.Recv.List, field(s, args...))
+		return fn
+	})
+}
+
+func (n nodef) WithParam(args ...NodeMarshaler) NodeMarshaler {
+	return nodef(func(s *Scope) ast.Node {
+		fn := n.MarshalNode(s).(*ast.FuncDecl)
+		fn.Type.Params.List = append(fn.Type.Params.List, field(s, args...))
+		return fn
+	})
+}
+
+func (n nodef) WithResult(args ...NodeMarshaler) NodeMarshaler {
+	return nodef(func(s *Scope) ast.Node {
+		fn := n.MarshalNode(s).(*ast.FuncDecl)
+		fn.Type.Results.List = append(fn.Type.Results.List, field(s, args...))
+		return fn
+	})
+}
+
+func (n nodef) WithBody(stmts ...NodeMarshaler) NodeMarshaler {
+	return nodef(func(s *Scope) ast.Node {
+		fn := n.MarshalNode(s).(*ast.FuncDecl)
+		block := &ast.BlockStmt{}
+		for _, stmt := range stmts {
+			nn := stmt.MarshalNode(s)
+			if x, ok := nn.(ast.Expr); ok {
+				block.List = append(block.List, &ast.ExprStmt{X: x})
+			} else {
+				block.List = append(block.List, nn.(ast.Stmt))
+			}
+		}
+		fn.Body = block
+		return fn
+	})
+}
+
+func field(s *Scope, args ...NodeMarshaler) *ast.Field {
+	f := &ast.Field{Names: []*ast.Ident{}}
+
+	for kk, arg := range args {
+		if arg == nil {
+			continue
+		}
+		n := arg.MarshalNode(s)
+		if n == nil {
+			continue
+		}
+
+		switch kk {
+		case len(args) - 1:
+			f.Tag = n.(*ast.BasicLit)
+		case len(args) - 2:
+			f.Type = n.(ast.Expr)
+		default:
+			f.Names = append(f.Names, n.(*ast.Ident))
+		}
+	}
+	return f
 }

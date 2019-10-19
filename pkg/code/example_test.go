@@ -18,11 +18,18 @@ func Example() {
 	y := code.Ident("y")
 	z := code.Ident("z")
 	n := code.Ident("n")
-	expr := code.If2(x.Assign(":=", n), x.Op("<", y)).
-		Then(z)
+
+	file := code.File(
+		"example",
+		code.Func("testfn").
+			WithParam(x, code.Ident("int"), nil).
+			WithParam(y, code.Ident("int"), nil).
+			WithResult(nil, code.Ident("int"), nil).
+			WithBody(code.If2(x.Assign(":=", n), x.Op("<", y)).Then(z)),
+	)
 
 	var buf bytes.Buffer
-	node := expr.MarshalNode(code.RootScope())
+	node := file.MarshalNode(code.RootScope())
 	if err := format.Node(&buf, &token.FileSet{}, node); err != nil {
 		fmt.Println("Unexpected error", err)
 	}
@@ -30,7 +37,11 @@ func Example() {
 	fmt.Println(buf.String())
 
 	// Output:
-	// if x := n; x < y {
-	// 	z
+	// package example
+	//
+	// func () testfn(x int, y int) (int) {
+	// 	if x := n; x < y {
+	// 		z
+	// 	}
 	// }
 }
