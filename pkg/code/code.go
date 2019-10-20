@@ -25,6 +25,10 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"strconv"
+	"strings"
+
+	"golang.org/x/tools/go/packages"
 )
 
 // Nil is the nil literal
@@ -134,6 +138,9 @@ func File(pkgName string, contents ...NodeMarshaler) NodeMarshaler {
 	return nodef(func(s *Scope) ast.Node {
 		f := &ast.File{Name: ast.NewIdent(pkgName)}
 		s.Stash[fileKey] = f
+		// first decl is an empty import
+		imports := &ast.GenDecl{Tok: token.IMPORT}
+		f.Decls = append(f.Decls, imports)
 		for _, content := range contents {
 			n := content.MarshalNode(s)
 			switch n := n.(type) {
@@ -146,8 +153,61 @@ func File(pkgName string, contents ...NodeMarshaler) NodeMarshaler {
 				panic("unexpected file content type")
 			}
 		}
+		if len(imports.Specs) == 0 {
+			f.Decls = f.Decls[1:]
+		}
 		return f
 	})
+}
+
+// Import imports a package if needed. If the package already exists,
+// it uses the same name as it used to have
+func Import(pkg string) NodeMarshaler {
+	return nodef(func(s *Scope) ast.Node {
+		f := s.Stash[fileKey].(*ast.File)
+		for _, spec := range f.Imports {
+			if spec.Path.Value == pkg {
+				return ast.NewIdent(spec.Name.Name)
+			}
+		}
+		cfg := &packages.Config{Mode: packages.NeedName}
+		pkgs, err := packages.Load(cfg, pkg)
+		name := ""
+		if err == nil && len(pkgs) == 1 {
+			name = pkgs[0].Name
+		} else {
+			parts := strings.Split(pkg, "/")
+			name = parts[len(parts)-1]
+		}
+		idx := 0
+		uniq := name
+		for !isUniqueImport(f, uniq) {
+			idx++
+			uniq = name + strconv.Itoa(idx)
+		}
+
+		pkg = `"` + pkg + `"`
+		spec := &ast.ImportSpec{
+			Name: ast.NewIdent(uniq),
+			Path: &ast.BasicLit{Kind: token.STRING, Value: pkg},
+		}
+		f.Imports = append(f.Imports, spec)
+		imports := f.Decls[0].(*ast.GenDecl)
+		if uniq == name {
+			spec = &ast.ImportSpec{Path: spec.Path}
+		}
+		imports.Specs = append(imports.Specs, spec)
+		return ast.NewIdent(uniq)
+	})
+}
+
+func isUniqueImport(f *ast.File, name string) bool {
+	for _, spec := range f.Imports {
+		if spec.Name.Name == name {
+			return false
+		}
+	}
+	return true
 }
 
 // AddDecl adds a declaration to the current file

@@ -18,14 +18,15 @@ func Example() {
 	y := code.Ident("y")
 	z := code.Ident("z")
 	n := code.Ident("n")
+	strz := code.Import("strconv").Dot("Itoa").Call(z)
 
 	file := code.File(
 		"example",
 		code.Func("testfn").
 			WithParam(x, code.Ident("int"), nil).
 			WithParam(y, code.Ident("int"), nil).
-			WithResult(nil, code.Ident("int"), nil).
-			WithBody(code.If2(x.Assign(":=", n), x.Op("<", y)).Then(z)),
+			WithResult(nil, code.Ident("string"), nil).
+			WithBody(code.If2(n.Assign(":=", x), n.Op("<", y)).Then(strz)),
 	)
 
 	var buf bytes.Buffer
@@ -39,9 +40,11 @@ func Example() {
 	// Output:
 	// package example
 	//
-	// func () testfn(x int, y int) (int) {
-	// 	if x := n; x < y {
-	// 		z
+	// import "strconv"
+	//
+	// func () testfn(x int, y int) (string) {
+	// 	if n := x; n < y {
+	// 		strconv.Itoa(z)
 	// 	}
 	// }
 }
