@@ -25,6 +25,12 @@ type NodeMarshaler interface {
 	// Op represents a binary operation such as "<"
 	Op(op string, o NodeMarshaler) NodeMarshaler
 
+	// Dot represents the dot operator
+	Dot(o string) NodeMarshaler
+
+	// Star represents a ptr deref
+	Star() NodeMarshaler
+
 	// Assign represents an assignment op such as ":="
 	// Use code.Assign for multiple simultaneous assignment
 	Assign(op string, o NodeMarshaler) NodeMarshaler
@@ -62,6 +68,21 @@ func (n nodef) Op(op string, o NodeMarshaler) NodeMarshaler {
 		}
 		y := o.MarshalNode(s).(ast.Expr)
 		return &ast.BinaryExpr{X: x, Op: tok, Y: y}
+	})
+}
+
+func (n nodef) Dot(o string) NodeMarshaler {
+	return nodef(func(s *Scope) ast.Node {
+		return &ast.SelectorExpr{
+			X:   n.MarshalNode(s).(ast.Expr),
+			Sel: ast.NewIdent(o),
+		}
+	})
+}
+
+func (n nodef) Star() NodeMarshaler {
+	return nodef(func(s *Scope) ast.Node {
+		return &ast.StarExpr{X: n.MarshalNode(s).(ast.Expr)}
 	})
 }
 

@@ -150,6 +150,12 @@ func File(pkgName string, contents ...NodeMarshaler) NodeMarshaler {
 	})
 }
 
+// AddDecl adds a declaration to the current file
+func AddDecl(s *Scope, n NodeMarshaler) {
+	f := s.Stash[fileKey].(*ast.File)
+	f.Decls = append(f.Decls, n.MarshalNode(s).(ast.Decl))
+}
+
 // Func creates a func decl.
 func Func(name string) NodeMarshaler {
 	return nodef(func(s *Scope) ast.Node {
