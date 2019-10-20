@@ -230,4 +230,16 @@ func Func(name string) NodeMarshaler {
 	})
 }
 
+// Return returns the set of expressions
+func Return(args ...NodeMarshaler) NodeMarshaler {
+	return nodef(func(s *Scope) ast.Node {
+		stmt := &ast.ReturnStmt{}
+		for _, arg := range args {
+			x := arg.MarshalNode(s).(ast.Expr)
+			stmt.Results = append(stmt.Results, x)
+		}
+		return stmt
+	})
+}
+
 var fileKey = &struct{}{}

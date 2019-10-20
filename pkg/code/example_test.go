@@ -18,7 +18,7 @@ func Example() {
 	y := code.Ident("y")
 	z := code.Ident("z")
 	n := code.Ident("n")
-	strz := code.Import("strconv").Dot("Itoa").Call(z)
+	strz := code.Return(code.Import("strconv").Dot("Itoa").Call(z))
 
 	file := code.File(
 		"example",
@@ -44,7 +44,7 @@ func Example() {
 	//
 	// func () testfn(x int, y int) (string) {
 	// 	if n := x; n < y {
-	// 		strconv.Itoa(z)
+	// 		return strconv.Itoa(z)
 	// 	}
 	// }
 }
