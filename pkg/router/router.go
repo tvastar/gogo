@@ -7,6 +7,8 @@ package router
 import (
 	"strings"
 
+	"go/ast"
+
 	"github.com/tvastar/gogo/pkg/code"
 )
 
@@ -25,35 +27,40 @@ func New(pkgName, structName string) *Config {
 		Receiver: recv,
 		Writer:   "w",
 		Request:  "r",
+		Routes:   nil,
 	}
 }
 
 type Config struct {
 	Package, Struct, Receiver, Writer, Request string
+	Routes                                     []code.NodeMarshaler
 }
 
-type Route interface {
-	Route(c *Config) code.NodeMarshaler
+func (c *Config) WithRoutes(routes ...code.NodeMarshaler) *Config {
+	c.Routes = append(c.Routes, routes...)
+	return c
 }
 
-func (c *Config) Generate(routes ...Route) code.NodeMarshaler {
-	var stmts []code.NodeMarshaler
-	for _, r := range routes {
-		stmts = append(stmts, r.Route(c))
-	}
+var cfgKey = "config"
 
+func (c *Config) MarshalNode(s *code.Scope) ast.Node {
+	s.Stash[&cfgKey] = c
 	writer := code.Import("net/http").Dot("ResponseWriter")
 	request := code.Import("net/http").Dot("Request").Star()
 	fn := code.Func("ServeHTTP").
 		WithReceiver(code.Ident(c.Receiver), code.Ident(c.Struct), nil).
 		WithParam(code.Ident(c.Writer), writer, nil).
 		WithParam(code.Ident(c.Request), request, nil).
-		WithBody(stmts...)
-	return code.File(c.Package, fn)
+		WithBody(c.Routes...)
+	return code.File(c.Package, fn).MarshalNode(s)
 }
 
-type StatusCode int
+func FromScope(s *code.Scope) *Config {
+	x, _ := s.LookupStash(&cfgKey)
+	return x.(*Config)
+}
 
-func (s StatusCode) Route(c *Config) code.NodeMarshaler {
-	return code.Ident(c.Writer).Dot("WriteHeader").Call(code.Literal(int(s)))
+func StatusCode(status int) code.NodeMarshaler {
+	// TODO: do not hardcode "w"
+	return code.Ident("w").Dot("WriteHeader").Call(code.Literal(status))
 }

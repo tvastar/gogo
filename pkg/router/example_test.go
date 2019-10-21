@@ -12,7 +12,7 @@ import (
 )
 
 func Example() {
-	r := router.New("example", "ex").Generate(
+	r := router.New("example", "ex").WithRoutes(
 		router.StatusCode(http.StatusOK),
 	)
 

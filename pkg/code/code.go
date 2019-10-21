@@ -137,7 +137,7 @@ func Assign(op string, kvpairs ...NodeMarshaler) NodeMarshaler {
 func File(pkgName string, contents ...NodeMarshaler) NodeMarshaler {
 	return nodef(func(s *Scope) ast.Node {
 		f := &ast.File{Name: ast.NewIdent(pkgName)}
-		s.Stash[fileKey] = f
+		s.Stash[&fileKey] = f
 		// first decl is an empty import
 		imports := &ast.GenDecl{Tok: token.IMPORT}
 		f.Decls = append(f.Decls, imports)
@@ -165,7 +165,8 @@ func File(pkgName string, contents ...NodeMarshaler) NodeMarshaler {
 func Import(pkg string) NodeMarshaler {
 	return nodef(func(s *Scope) ast.Node {
 		path := `"` + pkg + `"`
-		f := s.Stash[fileKey].(*ast.File)
+		x, _ := s.LookupStash(&fileKey)
+		f := x.(*ast.File)
 		for _, spec := range f.Imports {
 			if spec.Path.Value == path {
 				return ast.NewIdent(spec.Name.Name)
@@ -212,13 +213,15 @@ func isUniqueImport(f *ast.File, name string) bool {
 
 // AddDecl adds a declaration to the current file
 func AddDecl(s *Scope, n NodeMarshaler) {
-	f := s.Stash[fileKey].(*ast.File)
+	x, _ := s.LookupStash(&fileKey)
+	f := x.(*ast.File)
 	f.Decls = append(f.Decls, n.MarshalNode(s).(ast.Decl))
 }
 
 // Func creates a func decl.
 func Func(name string) NodeMarshaler {
 	return nodef(func(s *Scope) ast.Node {
+		s.Vars[name] = ast.NewIdent(name)
 		return &ast.FuncDecl{
 			Name: ast.NewIdent(name),
 			Recv: &ast.FieldList{},
@@ -242,4 +245,4 @@ func Return(args ...NodeMarshaler) NodeMarshaler {
 	})
 }
 
-var fileKey = &struct{}{}
+var fileKey = "file"

@@ -114,7 +114,10 @@ func (n nodef) Call(args ...NodeMarshaler) NodeMarshaler {
 
 func (n nodef) Then(stmts ...NodeMarshaler) NodeMarshaler {
 	return nodef(func(s *Scope) ast.Node {
+		s = s.New()
 		ifstmt := n.MarshalNode(s).(*ast.IfStmt)
+
+		s = s.New()
 		block := &ast.BlockStmt{}
 		for _, stmt := range stmts {
 			nn := stmt.MarshalNode(s)
@@ -155,7 +158,9 @@ func (n nodef) WithResult(args ...NodeMarshaler) NodeMarshaler {
 
 func (n nodef) WithBody(stmts ...NodeMarshaler) NodeMarshaler {
 	return nodef(func(s *Scope) ast.Node {
+		s = s.New()
 		fn := n.MarshalNode(s).(*ast.FuncDecl)
+		s = s.New()
 		block := &ast.BlockStmt{}
 		for _, stmt := range stmts {
 			nn := stmt.MarshalNode(s)
@@ -188,7 +193,9 @@ func field(s *Scope, args ...NodeMarshaler) *ast.Field {
 		case len(args) - 2:
 			f.Type = n.(ast.Expr)
 		default:
-			f.Names = append(f.Names, n.(*ast.Ident))
+			nn := n.(*ast.Ident)
+			s.Vars[nn.Name] = nn
+			f.Names = append(f.Names, nn)
 		}
 	}
 	return f
