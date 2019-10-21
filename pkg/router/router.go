@@ -42,8 +42,8 @@ func (c *Config) Generate(routes ...Route) code.NodeMarshaler {
 		stmts = append(stmts, r.Route(c))
 	}
 
-	writer := code.Ident("http").Dot("ResponseWriter")
-	request := code.Ident("http").Dot("Request").Star()
+	writer := code.Import("net/http").Dot("ResponseWriter")
+	request := code.Import("net/http").Dot("Request").Star()
 	fn := code.Func("ServeHTTP").
 		WithReceiver(code.Ident(c.Receiver), code.Ident(c.Struct), nil).
 		WithParam(code.Ident(c.Writer), writer, nil).

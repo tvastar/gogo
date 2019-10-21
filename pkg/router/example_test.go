@@ -8,11 +8,12 @@ import (
 	"fmt"
 	"go/format"
 	"go/token"
+	"net/http"
 )
 
 func Example() {
 	r := router.New("example", "ex").Generate(
-		router.StatusCode(200),
+		router.StatusCode(http.StatusOK),
 	)
 
 	var buf bytes.Buffer
@@ -25,6 +26,8 @@ func Example() {
 
 	// Output:
 	// package example
+	//
+	// import "net/http"
 	//
 	// func (e ex) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// 	w.WriteHeader(200)

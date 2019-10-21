@@ -164,16 +164,17 @@ func File(pkgName string, contents ...NodeMarshaler) NodeMarshaler {
 // it uses the same name as it used to have
 func Import(pkg string) NodeMarshaler {
 	return nodef(func(s *Scope) ast.Node {
+		path := `"` + pkg + `"`
 		f := s.Stash[fileKey].(*ast.File)
 		for _, spec := range f.Imports {
-			if spec.Path.Value == pkg {
+			if spec.Path.Value == path {
 				return ast.NewIdent(spec.Name.Name)
 			}
 		}
 		cfg := &packages.Config{Mode: packages.NeedName}
 		pkgs, err := packages.Load(cfg, pkg)
 		name := ""
-		if err == nil && len(pkgs) == 1 {
+		if err == nil && len(pkgs) == 1 && pkgs[0].Name != "" {
 			name = pkgs[0].Name
 		} else {
 			parts := strings.Split(pkg, "/")
@@ -186,10 +187,9 @@ func Import(pkg string) NodeMarshaler {
 			uniq = name + strconv.Itoa(idx)
 		}
 
-		pkg = `"` + pkg + `"`
 		spec := &ast.ImportSpec{
 			Name: ast.NewIdent(uniq),
-			Path: &ast.BasicLit{Kind: token.STRING, Value: pkg},
+			Path: &ast.BasicLit{Kind: token.STRING, Value: path},
 		}
 		f.Imports = append(f.Imports, spec)
 		imports := f.Decls[0].(*ast.GenDecl)
