@@ -48,6 +48,11 @@ type NodeMarshaler interface {
 	WithBody(stmt ...NodeMarshaler) NodeMarshaler
 }
 
+// MarshalerFunc converts a function into a node marshaler
+func MarshalerFunc(fn func(s *Scope) ast.Node) NodeMarshaler {
+	return nodef(fn)
+}
+
 type nodef func(s *Scope) ast.Node
 
 func (n nodef) MarshalNode(s *Scope) ast.Node {

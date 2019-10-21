@@ -60,7 +60,13 @@ func FromScope(s *code.Scope) *Config {
 	return x.(*Config)
 }
 
+func Writer() code.NodeMarshaler {
+	return code.MarshalerFunc(func(s *code.Scope) ast.Node {
+		c := FromScope(s)
+		return ast.NewIdent(c.Writer)
+	})
+}
+
 func StatusCode(status int) code.NodeMarshaler {
-	// TODO: do not hardcode "w"
-	return code.Ident("w").Dot("WriteHeader").Call(code.Literal(status))
+	return Writer().Dot("WriteHeader").Call(code.Literal(status))
 }
